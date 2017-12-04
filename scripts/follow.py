@@ -7,6 +7,7 @@ from sensor_msgs.msg import Image
 import numpy as np
 import imutils
 from collections import deque
+from cv_bridge import CvBridge, CvBridgeError
 
 # color boundary
 redLower = (108, 48, 0)
@@ -22,6 +23,8 @@ class BallFollow():
         self.center_y = 0
         self.pts = deque(maxlen=pts_buffer)
 
+        self.bridge = CvBridge()
+
         rospy.init_node('ball_follow', anonymous=False)
 
         #subscribers
@@ -34,8 +37,9 @@ class BallFollow():
         rospy.sleep()
 
     # call backs for image
-    def image_callback(self, frame):
+    def image_callback(self, image):
         # TODO: get frame, find red pixel
+        frame = self.bridge.imgmsg_to_cv2(image, "bgr8")
         frame = imutils.resize(frame, width=600)
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -45,9 +49,9 @@ class BallFollow():
 
         # find contours
         # (x, y) cetner of ball
-        cnts = cv2.findContour(mask.copy(), cv2.RETR_EXTERNAL, 
+        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, 
             cv2.CHAIN_APPROX_SIMPLE)[-2]
-        cetner = None
+        center = None
 
         if len(cnts) > 0:
             # find the largest contour on the mask and use it to calc circle
@@ -65,9 +69,27 @@ class BallFollow():
                 cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
             # update the pts queue
-            pts.appendleft(center)
+        self.pts.appendleft(center)
 
-            # loop over tracked pts
+        # loop over tracked pts
+        for i in xrange(1, len(self.pts)):
+            # if the points are None, ignore
+            if self.pts[i - 1] is None or self.pts[i] is None:
+                continue
+
+            # otherwise, compute thickness of the line, draw connecting line
+            thickness = int(np.sqrt(pts_buffer / float(i + 1)) * 2.5)
+            cv2.line(frame, self.pts[i - 1], self.pts[i], (0, 0, 255), thickness)
+
+        # show the frame to the screen
+        cv2.imshow("Frame", frame)
+        cv2.waitKey(3)
+
+        # if the 'q' key is pressed, stop the loop
+        #if key == ord("q"):
+            #break
+
+
 
     # move/follow node
 
