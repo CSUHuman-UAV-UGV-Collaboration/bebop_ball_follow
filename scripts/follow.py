@@ -10,8 +10,8 @@ from collections import deque
 from cv_bridge import CvBridge, CvBridgeError
 
 # color boundary
-redLower = (108, 48, 0)
-redUpper = (255, 0, 0)
+redLower = (0, 100, 100)
+redUpper = (10, 255, 255)
 pts_buffer = 10
 
 class BallFollow():
